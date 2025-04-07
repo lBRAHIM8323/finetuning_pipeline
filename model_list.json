@@ -1,0 +1,27 @@
+[
+    {
+        "model": "pharynxai/synctalk_finetune_testing_qwen2.5",
+        "base_model": "Meta-Llama-3.1-8B-Instruct"
+    },
+    {
+        "model": "gardio/model",
+        "base_model": "Meta-Llama-3.1-8B-Instruct"
+    },
+    {
+        "model": "pharynxai/synctalk_finetune_testin_quantize",
+        "base_model": "Meta-Llama-3.1-8B-Instruct"
+    },
+    {
+        "model": "PharynxAI/synctalk_finetune_testin_quantize-awq",
+        "base_model": "Meta-Llama-3.1-8B-Instruct",
+        "quantized": true
+    },
+    {
+        "model": "me/new",
+        "base_model": "Meta-Llama-3.1-8B-Instruct"
+    },
+    {
+        "model": "user/me",
+        "base_model": "Meta-Llama-3.1-8B-Instruct"
+    }
+]
