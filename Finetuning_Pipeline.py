@@ -1,3 +1,5 @@
+#Finetuning_Pipeline.py
+
 import json
 import re
 import os
@@ -55,7 +57,7 @@ class Logger:
         )
         return logging.getLogger(__name__)
 
-logger =Logger.setup()
+logger =Logger.setup() 
 
 class ConfigManager:
     """Handles configuration loading and validation"""
@@ -67,7 +69,7 @@ class ConfigManager:
             # Validate that we have an argument
             if len(sys.argv) < 2:
                 raise ValueError("No input JSON provided")
-
+            
             # Parse the JSON input from command line argument
             input_data = json.loads(sys.argv[1])
             return input_data
@@ -85,7 +87,7 @@ class ConfigManager:
     def validate_config(config):
         """Validate that all required fields are present in the configuration"""
         required_fields = [
-            'json_file', 'base_model', 'system_prompt', 'repo_id',
+            'json_file', 'base_model', 'system_prompt', 'repo_id', 
             'max_step', 'learning_rate', 'epochs'
         ]
         missing_fields = [field for field in required_fields if field not in config]
@@ -163,11 +165,11 @@ class ModelManager:
         """Load the base model and configure it for fine-tuning"""
         base_model = self.config.get('base_model')
         base_model_path = f"base_model/{base_model}"
-
+        
         # Check if local model path exists
         if not os.path.exists(base_model_path):
             raise FileNotFoundError(f"Local model path not found: {base_model_path}")
-
+        
         # Load model and tokenizer
         model, tokenizer = FastLanguageModel.from_pretrained(
             model_name=base_model_path,
@@ -175,7 +177,7 @@ class ModelManager:
             dtype=self.dtype,
             load_in_4bit = True
         )
-
+        
         # Configure PEFT
         model = FastLanguageModel.get_peft_model(
             model,
@@ -190,7 +192,7 @@ class ModelManager:
             use_rslora=True,
             loftq_config=None,
         )
-
+        
         # Set up tokenizer with chat template
         tokenizer = get_chat_template(
             tokenizer,
@@ -198,7 +200,7 @@ class ModelManager:
             mapping={"role": "from", "content": "value", "user": "human", "assistant": "gpt"},
             map_eos_token=True,
         )
-
+        
         return model, tokenizer
 
     def save_model(self, model, tokenizer):
@@ -208,15 +210,15 @@ class ModelManager:
         hf_token = self.config.get('hf_token', None)
         base_model = self.config.get('base_model', 'unknown')
         folder_path = None
-
+        
         if repo_id:
             # Split repo_id into username and model name
             username, model_name = repo_id.split('/')
-
+            
             # Create the directory path
             folder_path = os.path.join(username.lower(), model_name.lower())
             os.makedirs(folder_path, exist_ok=True)
-
+            
             self.logger.info(f"Saving the model locally to {folder_path}")
             # Save the model and tokenizer using the merged approach
             model.save_pretrained(folder_path, tokenizer, save_method="lora")
@@ -224,7 +226,7 @@ class ModelManager:
             # Verify files were saved
             saved_files = os.listdir(folder_path)
             self.logger.info(f"Saved files: {saved_files}")
-
+            
             # Update model list locally
             model_info = {
                 "model": folder_path,
@@ -232,31 +234,31 @@ class ModelManager:
             }
             self.update_model_list(model_info)
             self.logger.info(f"Model list updated successfully for folder_path: {folder_path}")
-
+        
         # Push to hub if enabled
         if push_to_hf:
             if not repo_id:
                 self.logger.error("repo_id is required to push to Hugging Face Hub")
                 raise ValueError("repo_id is required to push to Hugging Face Hub")
-
+            
             if hf_token is None:
                 self.logger.warning("No HF token provided. Attempting to push with cached credentials.")
-
+            
             self.logger.info(f"Attempting to push model to {repo_id}")
             model.push_to_hub_merged(repo_id, tokenizer, save_method="lora", token=hf_token)
-
+            
             # Update the centralized model list on Hugging Face
             try:
                 self.update_centralized_model_list(repo_id, f"unsloth/{base_model}", hf_token)
             except Exception as e:
                 self.logger.error(f"Failed to update centralized model list: {str(e)}")
-
+            
             model_info = {
                 "model": repo_id,
                 "base_model": f"unsloth/{base_model}"
             }
             self.logger.info("Successfully pushed model to Hugging Face Hub")
-
+            
         return folder_path
 
     def load_huggingface_json(self, repo_id: str, filename: str, save_path: str = None, hf_token=None):
@@ -268,9 +270,9 @@ class ModelManager:
 
         try:
             response = requests.get(url, headers=headers)
-            response.raise_for_status()
+            response.raise_for_status()  
             data = response.json()
-
+            
             if save_path:
                 save_path = Path(save_path)
                 save_path.parent.mkdir(parents=True, exist_ok=True)
@@ -278,7 +280,7 @@ class ModelManager:
                     json.dump(data, f, indent=2)
 
             return data
-
+            
         except requests.exceptions.HTTPError as e:
             if response.status_code == 401:
                 self.logger.error("Error: Unauthorized access. Check your Hugging Face token and permissions.")
@@ -295,14 +297,14 @@ class ModelManager:
 
         # Use self.load_huggingface_json instead of HfApi
         existing_data = self.load_huggingface_json(
-            repo_id=model_list_repo,
-            filename=model_list_file,
+            repo_id=model_list_repo, 
+            filename=model_list_file, 
             hf_token=hf_token
         )
 
         # Ensure model_list is initialized correctly
         model_list = existing_data if isinstance(existing_data, list) else []
-
+        
         model_info = {
             "model": repo_id,
             "base_model": base_model
@@ -386,14 +388,14 @@ class ModelManager:
         repo_id = self.config['repo_id']
         access_type = self.config.get('Access_Type', '')
         hf_token = self.config.get('hf_token', None)
-
+        
         try:
             input_json = json.dumps({
-                "repo_id": repo_id,
-                "Access_Type": access_type,
+                "repo_id": repo_id, 
+                "Access_Type": access_type, 
                 "hf_token": hf_token
             })
-
+            
             process = subprocess.Popen(
                 ["python", "Quantization.py", input_json],
                 stdout=subprocess.PIPE,
@@ -414,7 +416,7 @@ class ModelManager:
             else:
                 self.logger.error("Quantization failed with return code: %d", return_code)
                 return False
-
+                
         except Exception as e:
             self.logger.error("Error during quantization: %s", str(e))
             return False
@@ -422,20 +424,20 @@ class ModelManager:
 
 class TensorBoardManager:
     """Manages TensorBoard for training visualization"""
-
+    
     def __init__(self, log_dir="tensorboard_logs", logger=None):
         self.log_dir = log_dir
         self.tensorboard_process = None
         self.logger = logger
         # Register cleanup on exit
         atexit.register(self.stop_tensorboard)
-
+        
     def start_tensorboard(self):
         """Start TensorBoard server as a subprocess"""
         try:
             # Create logs directory if it doesn't exist
             Path(self.log_dir).mkdir(parents=True, exist_ok=True)
-
+            
             # Start TensorBoard process
             self.tensorboard_process = subprocess.Popen(
                 ["tensorboard", "--logdir", self.log_dir, "--host", "0.0.0.0"],
@@ -443,17 +445,17 @@ class TensorBoardManager:
                 stderr=subprocess.PIPE,
                 preexec_fn=os.setsid  # Create new process group
             )
-
+            
             # Give TensorBoard time to start
             time.sleep(5)
-
+            
             self.logger.info(f"TensorBoard started. Access it at http://localhost:6006")
             return True
-
+            
         except Exception as e:
             self.logger.info(f"Failed to start TensorBoard: {str(e)}")
             return False
-
+    
     def stop_tensorboard(self):
         """Stop TensorBoard server"""
         if self.tensorboard_process:
@@ -474,7 +476,7 @@ class TensorBoardManager:
 
 class TrackBestModelCallback(TrainerCallback):
     """Callback to track and save the best model during training"""
-
+    
     def __init__(self, output_dir, writer, logger):
         super().__init__()
         self.best_loss = float('inf')
@@ -489,7 +491,7 @@ class TrackBestModelCallback(TrainerCallback):
         if train_loss is not None:
             # Log the training loss to TensorBoard
             self.writer.add_scalar('Training/Loss', train_loss, state.global_step)
-
+                       
             if train_loss < self.best_loss:
                 self.best_loss = train_loss
                 self.best_step = state.global_step
@@ -513,7 +515,7 @@ class TrackBestModelCallback(TrainerCallback):
 
 class TrainingManager:
     """Manages the training process"""
-
+    
     def __init__(self, config, model, tokenizer, dataset, logger):
         self.config = config
         self.model = model
@@ -527,11 +529,11 @@ class TrainingManager:
         self.trainer = None
         self.best_model_tracker = None
         self.start_gpu_memory = None
-
+        
     def configure_trainer(self):
         """Configure the SFT trainer with all parameters"""
         max_seq_length = 2048
-
+        
         # Extract training parameters from config
         per_device_train_batch_size = self.config.get('per_device_train_batch_size', 4)
         gradient_accumulation_steps = self.config.get('gradient_accumulation_steps', 2)
@@ -550,7 +552,7 @@ class TrainingManager:
         max_step = self.config.get('max_step')
         learning_rate = self.config.get('learning_rate')
         epochs = self.config.get('epochs')
-
+        
         # Create training arguments
         training_args = TrainingArguments(
             per_device_train_batch_size=per_device_train_batch_size,
@@ -581,7 +583,7 @@ class TrainingManager:
             torch_compile=True,  # Use PyTorch 2.0 compiler for faster execution
 
         )
-
+        
         # Create SFT trainer
         self.trainer = SFTTrainer(
             model=self.model,
@@ -593,17 +595,17 @@ class TrainingManager:
             packing=False,
             args=training_args,
         )
-
+        
         # Add callback to track the best model
         self.best_model_tracker = TrackBestModelCallback(self.output_dir, self.writer, self.logger)
         self.trainer.add_callback(self.best_model_tracker)
-
+        
     def log_memory_stats(self, is_start=True):
         """Log current GPU memory usage"""
         gpu_stats = torch.cuda.get_device_properties(0)
         current_gpu_memory = round(torch.cuda.max_memory_reserved() / 1024 / 1024 / 1024, 3)
         max_memory = round(gpu_stats.total_memory / 1024 / 1024 / 1024, 3)
-
+        
         if is_start:
             self.start_gpu_memory = current_gpu_memory
             self.logger.info(f"GPU = {gpu_stats.name}. Max memory = {max_memory} GB.")
@@ -616,7 +618,7 @@ class TrainingManager:
             self.logger.info(f"Peak reserved memory for training = {used_memory_for_lora} GB.")
             self.logger.info(f"Peak reserved memory % of max memory = {used_percentage} %.")
             self.logger.info(f"Peak reserved memory for training % of max memory = {lora_percentage} %.")
-
+        
     def train(self):
         """Run the training process"""
         try:
@@ -625,21 +627,21 @@ class TrainingManager:
 
             # Start training
             trainer_stats = self.trainer.train()
-
+            
             # Log final stats
             self.logger.info("Training completed.")
             self.logger.info(f"Best loss: {self.best_model_tracker.best_loss} at step {self.best_model_tracker.best_step}")
             self.logger.info(f"Final training loss: {trainer_stats.training_loss}")
-
+            
             # Log time stats
             self.logger.info(f"{trainer_stats.metrics['train_runtime']} seconds used for training.")
             self.logger.info(f"{round(trainer_stats.metrics['train_runtime']/60, 2)} minutes used for training.")
-
+            
             # Log memory stats
             self.log_memory_stats(is_start=False)
-
+            
             return trainer_stats
-
+            
         finally:
             # Always stop TensorBoard when done
             self.tensorboard.stop_tensorboard()
@@ -648,44 +650,44 @@ class TrainingManager:
 
 class FineTuningPipeline:
     """Main pipeline class that orchestrates the entire fine-tuning process"""
-
+    
     def __init__(self):
         self.logger = Logger.setup()
         self.config = None
         self.model = None
         self.tokenizer = None
         self.dataset = None
-
+        
     def load_config(self):
         """Load and validate configuration"""
         config = ConfigManager.parse_input()
         self.config = ConfigManager.validate_config(config)
-
+        
     # In the FineTuningPipeline.run method, modify the quantize check as follows:
     def run(self):
         """Run the complete fine-tuning pipeline"""
         try:
             # Load configuration
             self.load_config()
-
+            
             # Initialize model manager and load model
             model_manager = ModelManager(self.config, self.logger)
             self.model, self.tokenizer = model_manager.load_model()
-
+            
             # Load and prepare dataset
             dataset_manager = DatasetManager(self.config, self.tokenizer, self.logger)
             self.dataset = dataset_manager.prepare_dataset()
-
+            
             # Train the model
             training_manager = TrainingManager(
                 self.config, self.model, self.tokenizer, self.dataset, self.logger
             )
             training_manager.configure_trainer()
             trainer_stats = training_manager.train()
-
+            
             # Save the final model
             saved_path = model_manager.save_model(self.model, self.tokenizer)
-
+            
             # Run quantization if requested - FIX HERE
             quantize = self.config.get("quantize", "no")
             # Handle both string and boolean values
@@ -693,7 +695,7 @@ class FineTuningPipeline:
                 should_quantize = quantize
             else:
                 should_quantize = quantize.lower() == "yes"
-
+                
             if should_quantize:
                 self.logger.info("Quantization requested. Starting quantization process...")
                 if model_manager.run_quantization():
@@ -704,7 +706,7 @@ class FineTuningPipeline:
                     self.logger.info(f"Quantization completed for {self.config['repo_id']}")
             else:
                 self.logger.info("Quantization not requested. Skipping quantization process.")
-
+                
             return {
                 "status": "success",
                 "model_path": saved_path,
@@ -712,7 +714,7 @@ class FineTuningPipeline:
                 "best_loss": training_manager.best_model_tracker.best_loss,
                 "best_step": training_manager.best_model_tracker.best_step
             }
-
+            
         except Exception as e:
             self.logger.error(f"Pipeline failed: {str(e)}", exc_info=True)
             return {
@@ -725,7 +727,7 @@ if __name__ == "__main__":
     start_time = time.time()
     pipeline = FineTuningPipeline()
     result = pipeline.run()
-
+    
     if result["status"] == "success":
         logger = logging.getLogger(__name__)
 

@@ -17,7 +17,7 @@ class QAGenerator:
 
     def _generate_qa_with_prompt(self, prompt_template: str, retries: int = 2) -> List[Dict]:
         available_tokens = self.token_processor.calculate_available_tokens(prompt_template)
-
+        
         for attempt in range(retries):
             try:
                 response = requests.post(
@@ -34,7 +34,7 @@ class QAGenerator:
                     timeout=600
                 )
                 response.raise_for_status()
-
+                
                 response_data = response.json()
                 if 'choices' in response_data and response_data['choices']:
                     generated_text = response_data['choices'][0]['message']['content'].strip()
@@ -42,11 +42,11 @@ class QAGenerator:
                         qa_pairs = json.loads(generated_text)
                         if isinstance(qa_pairs, list):
                             valid_pairs = [
-                                pair for pair in qa_pairs
-                                if isinstance(pair, dict) and
-                                "prompt" in pair and
-                                "response" in pair and
-                                pair["prompt"] and
+                                pair for pair in qa_pairs 
+                                if isinstance(pair, dict) and 
+                                "prompt" in pair and 
+                                "response" in pair and 
+                                pair["prompt"] and 
                                 pair["response"]
                             ]
                             if valid_pairs:
@@ -110,10 +110,10 @@ class QAGenerator:
                 # Escape pipe characters in column names
                 col_str = col_str.replace("|", "\\|")
                 column_headers.append(col_str)
-
+            
             header = "| " + " | ".join(column_headers) + " |"
             separator = "| " + " | ".join(["---" for _ in columns]) + " |"
-
+            
             rows = []
             for _, row in df.iterrows():
                 row_values = []
@@ -123,7 +123,7 @@ class QAGenerator:
                     cell_value = cell_value.replace("|", "\\|").replace("\n", "<br>")
                     row_values.append(cell_value)
                 rows.append("| " + " | ".join(row_values) + " |")
-
+            
             # Combine all parts into a well-formed markdown table
             markdown_table = header + "\n" + separator + "\n" + "\n".join(rows)
             return markdown_table
@@ -136,10 +136,10 @@ class QAGenerator:
         """Generate QA pairs from a table."""
         if table.empty:
             return []
-
+            
         # Convert table to string representation that preserves structure
         table_str = table.to_string(index=False)
-
+        
         prompt_template = f"""You are an AI assistant tasked with generating informative question-answer pairs from tabular data.
 
             INPUT TABLE:
@@ -164,15 +164,15 @@ class QAGenerator:
             [
                 {{"prompt": "What are the  values in the table and what do they represent?","response": "The values in the table are X in column Y, representing... (detailed explanation with specific data points)."}}
             ]"""
-
+            
         return self._generate_qa_with_prompt(prompt_template, retries)
-
+        
     def _generate_table_qa_pairs(self, table: pd.DataFrame, table_title: str, page_num: int, table_idx: int) -> List[Dict]:
         qa_pairs = []
-
+        
         try:
             md_table = self.table_to_markdown(table)
-
+            
             # Table overview prompt
             table_overview_qa = {
                 'prompt': f"What is the content of {table_title} table on page {page_num}?",
@@ -180,12 +180,12 @@ class QAGenerator:
                 'source': f'Page {page_num}'
             }
             qa_pairs.append(table_overview_qa)
-
+            
             table_qa = self.generate_qa_from_table(table)
             for qa in table_qa:
                 qa['response'] = f"{qa['response']}-Table ({table_title}),-Page {page_num}"
                 qa_pairs.append(qa)
-
+            
         except Exception as e:
             self.logger.warning(f"Error generating table QA pairs: {str(e)}")
             error_qa = {
@@ -194,7 +194,7 @@ class QAGenerator:
                 'source': f'Page {page_num}'
             }
             qa_pairs.append(error_qa)
-
+        
         return qa_pairs
 
     def _extract_table_context(self, page_text: str, table_idx: int, total_tables: int) -> str:
@@ -203,14 +203,14 @@ class QAGenerator:
             lines = page_text.split('\n')
             context_window = 5
             estimated_table_line = int(len(lines) * (table_idx + 1) / (total_tables + 1))
-
+            
             # Extract context lines
             start_line = max(0, estimated_table_line - context_window)
             end_line = min(len(lines), estimated_table_line + context_window)
-
+            
             context_lines = lines[start_line:end_line]
             return '\n'.join(context_lines)
-
+        
         except Exception as e:
             self.logger.warning(f"Error extracting table context: {str(e)}")
             return ""
@@ -218,7 +218,7 @@ class QAGenerator:
     def _extract_table_title_with_llm(self, context: str, table: pd.DataFrame) -> str:
         try:
             # Prepare a prompt for title extraction
-            prompt_template = f"""Given the following contextual text and table data,
+            prompt_template = f"""Given the following contextual text and table data, 
             please extract or infer the most likely title for this table:
 
             CONTEXT:
@@ -232,9 +232,9 @@ class QAGenerator:
             2. Provide a concise, descriptive title
             3. If no clear title is found, return "Untitled Table"
             4. Respond ONLY with the table title
-            5. Do not modify the table title in any way return as it is in context
+            5. Do not modify the table title in any way return as it is in context 
             """
-
+            
             response = requests.post(
                 "http://localhost:8000/v1/chat/completions",
                 headers={"Content-Type": "application/json"},
@@ -251,15 +251,15 @@ class QAGenerator:
             )
             response.raise_for_status()
             response_data = response.json()
-
+            
             if 'choices' in response_data and response_data['choices']:
                 title = response_data['choices'][0]['message']['content'].strip()
 
                 if not title or title.lower() in ['untitled table', 'none']:
                     return "Untitled Table"
-
+                
                 return title
-
+            
         except Exception as e:
             self.logger.warning(f"LLM title extraction failed: {str(e)}")
         return None
@@ -267,7 +267,7 @@ class QAGenerator:
 
     def process_page_content(self, page_content, page_num: int) -> List[Dict]:
         qa_pairs = []
-
+        
         # Process tables
         if page_content.tables and len(page_content.tables) > 0:
             # Perform a first pass to detect table titles and contexts
@@ -276,38 +276,38 @@ class QAGenerator:
                 if table.empty:
                     continue
                 table_context = self._extract_table_context(page_content.text, table_idx, len(page_content.tables))
-
+                
                 table_contexts.append({
                     'table': table,
                     'index': table_idx,
                     'context': table_context
                 })
-
+            
             # Process each table with its context
             for table_info in table_contexts:
                 table = table_info['table']
                 table_idx = table_info['index']
                 table_context = table_info['context']
-
+                
                 # Detect table title using LLM
                 table_title = self._extract_table_title_with_llm(page_content.text, table)
                 table_qa_pairs = self._generate_table_qa_pairs(
-                    table,
-                    table_title,
-                    page_num,
+                    table, 
+                    table_title, 
+                    page_num, 
                     table_idx
                 )
-
+                
                 qa_pairs.extend(table_qa_pairs)
 
         if page_content.tables and len(page_content.tables) > 0:
             cleaned_page_text = self._remove_table_content_from_text(
-                page_content.text,
+                page_content.text, 
                 page_content.tables
             )
         else:
             cleaned_page_text = page_content.text
-
+            
         # Only generate QA pairs if there's meaningful text content
         if cleaned_page_text and cleaned_page_text.strip():
             # Pass the cleaned text instead of the original text
@@ -315,23 +315,23 @@ class QAGenerator:
             for qa in text_qa:
                 qa['response'] = f"{qa['response']}-Page {page_num}"
                 qa_pairs.append(qa)
-
+                
         return qa_pairs
 
     def remove_duplicate_qa_pairs(self, qa_pairs: List[Dict]) -> List[Dict]:
         """Remove duplicate QA pairs based on prompt similarity."""
         if not qa_pairs:
             return []
-
+            
         unique_pairs = []
         prompts = set()
-
+        
         for qa in qa_pairs:
             prompt = qa.get("prompt", "").strip().lower()
             if prompt and prompt not in prompts:
                 prompts.add(prompt)
                 unique_pairs.append(qa)
-
+                
         return unique_pairs
 
 
@@ -341,7 +341,7 @@ class QAGenerator:
             tables = [table for table in tables if not table.empty]
             if not tables:
                 return page_text
-
+                
             # Convert tables to string representations
             table_texts = []
             for table in tables:
@@ -349,24 +349,24 @@ class QAGenerator:
                 table_lines = table_str.strip().split('\n')
                 if len(table_lines) > 1:
                     header_pattern = re.escape(table_lines[0].strip())
-
+                    
                     data_patterns = []
-                    if len(table_lines) > 2:
+                    if len(table_lines) > 2:  
                         data_patterns.append(re.escape(table_lines[1].strip()))
-                    if len(table_lines) > 3:
+                    if len(table_lines) > 3: 
                         data_patterns.append(re.escape(table_lines[-1].strip()))
-
+                    
                     table_texts.append(header_pattern)
                     table_texts.extend(data_patterns)
             if table_texts:
                 cleaned_text = page_text
                 for pattern in table_texts:
                     try:
-                        cleaned_text = re.sub(f"(?:.{{0,100}}{pattern}.{{0,100}})", " ", cleaned_text,
+                        cleaned_text = re.sub(f"(?:.{{0,100}}{pattern}.{{0,100}})", " ", cleaned_text, 
                                             flags=re.MULTILINE | re.DOTALL)
                     except Exception as e:
                         self.logger.warning(f"Error removing specific table pattern: {str(e)}")
-
+                
                 cleaned_text = re.sub(r'\s{2,}', ' ', cleaned_text)
                 return cleaned_text.strip()
         except Exception as e:

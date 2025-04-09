@@ -54,37 +54,37 @@ class TokenProcessor:
         """Analyze token statistics for PDF content."""
         if not pdf_content:
             return {"avg_tokens_per_page": 1000}  # Default fallback
-
+            
         # Take a representative sample of pages (up to 10 pages)
         sample_size = min(10, len(pdf_content))
         sample_indices = [int(i * len(pdf_content) / sample_size) for i in range(sample_size)]
         sample_pages = [pdf_content[i] for i in sample_indices]
-
+        
         # Analyze token counts for the sample
         token_counts = []
         for page in sample_pages:
             if hasattr(page, 'text') and page.text:
                 token_count = self.count_tokens(page.text)
                 token_counts.append(token_count)
-
+        
         if not token_counts:
             return {"avg_tokens_per_page": 1000}  # Default fallback
-
+            
         # Calculate statistics
         avg_tokens = sum(token_counts) / len(token_counts)
         max_tokens = max(token_counts)
         min_tokens = min(token_counts)
         median_tokens = sorted(token_counts)[len(token_counts) // 2]
-
+        
         self.logger.info(f"Token statistics - Avg: {avg_tokens:.1f}, Min: {min_tokens}, Max: {max_tokens}, Median: {median_tokens}")
-
+        
         return {
             "avg_tokens_per_page": avg_tokens,
             "max_tokens_per_page": max_tokens,
             "min_tokens_per_page": min_tokens,
             "median_tokens_per_page": median_tokens
         }
-
+        
     def split_chunk_by_tokens(self, text: str, max_tokens: int) -> List[str]:
         """Split text into chunks that fit within token limit."""
         import re
@@ -107,4 +107,4 @@ class TokenProcessor:
         if current_chunk:
             chunks.append(current_chunk.strip())
 
-        return chunksroot
+        return chunks

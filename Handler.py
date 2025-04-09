@@ -51,7 +51,7 @@ def process_pdf_command_line(config: Dict[str, Any]) -> Dict[str, Any]:
             return {'status': 'error', 'message': 'Missing required parameter: pdf_file'}
         if not os.path.exists(config.get('pdf_file')):
             return {'status': 'error', 'message': f'PDF file not found: {config.get("pdf_file")}'}
-
+        
         # Create processor instance
         processor = EnhancedPDFProcessor()
 
@@ -60,12 +60,12 @@ def process_pdf_command_line(config: Dict[str, Any]) -> Dict[str, Any]:
         if not processor.process_input(["pdf_processor", config_json]):
             return {'status': 'error', 'message': 'Failed to process configuration'}
         result = processor.process_pdf()
-
+        
         if result['status'] == 'success':
             logger.info(f"QA pairs generated: {result['qa_pairs_count']}\nOutput saved to: {result['output_file']}")
-
+        
         return result
-
+    
     except Exception as e:
         logger.error(f"Error processing PDF: {e}", exc_info=True)
         return {'status': 'error', 'message': str(e)}
@@ -75,10 +75,10 @@ def process_fine_tuning(config: Dict[str, Any]) -> Dict[str, Any]:
     try:
         # Extract required parameters for fine-tuning
         required_fields = [
-            'json_file', 'base_model', 'system_prompt', 'repo_id',
+            'json_file', 'base_model', 'system_prompt', 'repo_id', 
             'max_step', 'learning_rate', 'epochs'
         ]
-
+        
         # Prepare the fine-tuning configuration
         finetune_config = {}
         for field in required_fields:
@@ -89,11 +89,11 @@ def process_fine_tuning(config: Dict[str, Any]) -> Dict[str, Any]:
 
         # Additional optional fields
         optional_fields = [
-            'push_to_hf', 'hf_token', 'quantize',
-            'per_device_train_batch_size', 'gradient_accumulation_steps',
-            'warmup_steps', 'logging_steps', 'optim', 'weight_decay',
-            'lr_scheduler_type', 'max_grad_norm', 'dataloader_num_workers',
-            'gradient_checkpointing', 'adam_beta1', 'adam_beta2',
+            'push_to_hf', 'hf_token', 'quantize', 
+            'per_device_train_batch_size', 'gradient_accumulation_steps', 
+            'warmup_steps', 'logging_steps', 'optim', 'weight_decay', 
+            'lr_scheduler_type', 'max_grad_norm', 'dataloader_num_workers', 
+            'gradient_checkpointing', 'adam_beta1', 'adam_beta2', 
             'adam_epsilon', 'ddp_find_unused_parameters'
         ]
         for field in optional_fields:
@@ -102,18 +102,18 @@ def process_fine_tuning(config: Dict[str, Any]) -> Dict[str, Any]:
 
         # Convert to JSON string
         config_json = json.dumps(finetune_config)
-
+        
         # Temporarily replace sys.argv to simulate command line arguments
         original_argv = sys.argv
         sys.argv = [original_argv[0], config_json]
-
+        
         # Create and run the pipeline
         pipeline = Finetuning_Pipeline.FineTuningPipeline()
         result = pipeline.run()
-
+        
         # Restore original sys.argv
         sys.argv = original_argv
-
+        
         return result
     except Exception as e:
         logger.error(f"Error during fine-tuning: {e}", exc_info=True)
@@ -127,18 +127,18 @@ def process_inference(config: Dict[str, Any]) -> Dict[str, Any]:
         for field in required_fields:
             if field not in config:
                 return {'status': 'error', 'message': f"Missing required field for inference: {field}"}
-
+        
         # Extract optional parameters with defaults
         max_tokens = config.get('max_tokens', 300)
         temperature = config.get('temperature', 0.7)
         gpu_utilization = config.get('gpu_utilization', 0.8)
-
+        
         # Initialize VLLMManager
         manager = VLLMManager()
-
+        
         # Check if we should shut down the server after inference
         shutdown_after = config.get('shutdown_after', False)
-
+        
         try:
             # Start the vLLM server (or use existing one if compatible)
             manager.start_vllm_server(
@@ -146,35 +146,35 @@ def process_inference(config: Dict[str, Any]) -> Dict[str, Any]:
                 adapter_path=config['adapter_path'],
                 gpu_utilization=gpu_utilization
             )
-
+            
             # Generate response
             response = manager.generate_response(
                 prompt=config['prompt'],
                 max_tokens=max_tokens,
                 temperature=temperature
             )
-
+            
             result = {
                 'status': 'success',
                 'response': response,
                 'model': config['base_model'],
                 'adapter': config['adapter_path']
             }
-
+            
             # Shutdown server if requested
             if shutdown_after:
                 manager.kill_existing_vllm_process()
                 result['server_shutdown'] = True
-
+                
             return result
-
+            
         except Exception as e:
             # If error occurs during server management or inference
             logger.error(f"Inference error: {e}")
             # Try to clean up
             manager.kill_existing_vllm_process()
             return {'status': 'error', 'message': f"Inference process failed: {str(e)}"}
-
+            
     except Exception as e:
         logger.error(f"Error setting up inference: {e}", exc_info=True)
         return {'status': 'error', 'message': str(e)}

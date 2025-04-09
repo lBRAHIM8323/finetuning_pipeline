@@ -23,5 +23,21 @@
     {
         "model": "user/me",
         "base_model": "Meta-Llama-3.1-8B-Instruct"
+    },
+    {
+        "model": "fine_model/fined_model",
+        "base_model": "Meta-Llama-3.1-8B-Instruct"
+    },
+    {
+        "model": "finemodel/finedmodel",
+        "base_model": "Meta-Llama-3.1-8B-Instruct"
+    },
+    {
+        "model": "finetunedmodel/models",
+        "base_model": "Meta-Llama-3.1-8B-Instruct"
+    },
+    {
+        "model": "finetuned/model",
+        "base_model": "Meta-Llama-3.1-8B-Instruct"
     }
 ]
