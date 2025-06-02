@@ -4,8 +4,8 @@ import json
 from huggingface_hub import hf_hub_download
 
 # Hardcoded API key and base URL
-API_KEY = "NUKS7FDSZL0Q83OH1JDZ4U4C55PHXTAVY7C97YMI"
-BASE_URL = "https://api.runpod.ai/v2/vllm-4eirfustzdfesg/openai/v1"
+API_KEY = ""
+BASE_URL = ""
 
 def generate_response(prompt, temperature, max_tokens, selected_model, model_list):
     # Find the selected model's details
