@@ -50,7 +50,7 @@ def get_model_list():
         content_path = hf_hub_download(
             repo_id="PharynxAI/Model_List",
             filename=model_list_file,
-            token="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",
+            token="",
             repo_type="dataset"
         )
 
